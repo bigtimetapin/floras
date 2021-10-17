@@ -1,172 +1,111 @@
-"""
-Title: Metric learning for image similarity search
-Author: [Mat Kelcey](https://twitter.com/mat_kelcey)
-Date created: 2020/06/05
-Last modified: 2020/06/09
-Description: Example of using similarity metric learning on CIFAR-10 images.
-"""
-"""
-## Overview
-Metric learning aims to train models that can embed inputs into a high-dimensional space
-such that "similar" inputs, as defined by the training scheme, are located close to each
-other. These models once trained can produce embeddings for downstream systems where such
-similarity is useful; examples include as a ranking signal for search or as a form of
-pretrained embedding model for another supervised problem.
-For a more detailed overview of metric learning see:
-* [What is metric learning?](http://contrib.scikit-learn.org/metric-learn/introduction.html)
-* ["Using crossentropy for metric learning" tutorial](https://www.youtube.com/watch?v=Jb4Ewl5RzkI)
-"""
+import tarfile
 
-"""
-## Setup
-"""
-
-import random
+import cv2
+from tensorflow.keras.layers import Dense, Flatten, Reshape, Input, InputLayer
+from tensorflow.keras.models import Sequential, Model
 import numpy as np
-import tensorflow as tf
-from collections import defaultdict
-from tensorflow import keras
-from tensorflow.keras import layers
+from sklearn.model_selection import train_test_split
 
-"""
-## Dataset
-For this example we will be using the
-[CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset.
-"""
+# http://vis-www.cs.umass.edu/lfw/lfw-deepfunneled.tgz
+IMAGES_NAME = "data/lfw-deepfunneled.tgz"
 
-from tensorflow.keras.datasets import cifar10
-
-(x_train, y_train), (x_test, y_test) = cifar10.load_data()
-
-x_train = x_train.astype("float32") / 255.0
-y_train = np.squeeze(y_train)
-x_test = x_test.astype("float32") / 255.0
-y_test = np.squeeze(y_test)
+# http://vis-www.cs.umass.edu/lfw/lfw.tgz
+RAW_IMAGES_NAME = "data/lfw.tgz"
 
 
-"""
-Metric learning provides training data not as explicit `(X, y)` pairs but instead uses
-multiple instances that are related in the way we want to express similarity. In our
-example we will use instances of the same class to represent similarity; a single
-training instance will not be one image, but a pair of images of the same class. When
-referring to the images in this pair we'll use the common metric learning names of the
-`anchor` (a randomly chosen image) and the `positive` (another randomly chosen image of
-the same class).
-To facilitate this we need to build a form of lookup that maps from classes to the
-instances of that class. When generating data for training we will sample from this
-lookup.
-"""
-class_idx_to_train_idxs = defaultdict(list)
-for y_train_idx, y in enumerate(y_train):
-    class_idx_to_train_idxs[y].append(y_train_idx)
+def decode_image_from_raw_bytes(raw_bytes):
+    img = cv2.imdecode(np.asarray(bytearray(raw_bytes), dtype=np.uint8), 1)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img
 
-class_idx_to_test_idxs = defaultdict(list)
-for y_test_idx, y in enumerate(y_test):
-    class_idx_to_test_idxs[y].append(y_test_idx)
 
-"""
-For this example we are using the simplest approach to training; a batch will consist of
-`(anchor, positive)` pairs spread across the classes. The goal of learning will be to
-move the anchor and positive pairs closer together and further away from other instances
-in the batch. In this case the batch size will be dictated by the number of classes; for
-CIFAR-10 this is 10.
-"""
-num_classes = 10
-height_width = 32
-class AnchorPositivePairs(keras.utils.Sequence):
-    def __init__(self, num_batchs):
-        self.num_batchs = num_batchs
+def load_lfw_dataset(
+        use_raw=False,
+        dx=80, dy=80,
+        dimx=45, dimy=45):
+    # Read photos
+    all_photos = []
 
-    def __len__(self):
-        return self.num_batchs
+    # tqdm in used to show progress bar while reading the data in a notebook here, you can change
+    # tqdm_notebook to use it outside a notebook
+    with tarfile.open(RAW_IMAGES_NAME if use_raw else IMAGES_NAME) as f:
+        for m in f.getmembers():
+            # Only process image files from the compressed data
+            if m.isfile() and m.name.endswith(".jpg"):
+                print(m.name)
+                # Prepare image
+                img = decode_image_from_raw_bytes(f.extractfile(m).read())
 
-    def __getitem__(self, _idx):
-        x = np.empty((2, num_classes, height_width, height_width, 3), dtype=np.float32)
-        for class_idx in range(num_classes):
-            examples_for_class = class_idx_to_train_idxs[class_idx]
-            anchor_idx = random.choice(examples_for_class)
-            positive_idx = random.choice(examples_for_class)
-            while positive_idx == anchor_idx:
-                positive_idx = random.choice(examples_for_class)
-            x[0, class_idx] = x_train[anchor_idx]
-            x[1, class_idx] = x_train[positive_idx]
-        return x
+                # Crop only faces and resize it
+                img = img[dy:-dy, dx:-dx]
+                img = cv2.resize(img, (dimx, dimy))
+
+                all_photos.append(img)
+
+    all_photos = np.stack(all_photos).astype('uint8')
+
+    return all_photos
 
 
 """
-## Embedding model
-We define a custom model with a `train_step` that first embeds both anchors and positives
-and then uses their pairwise dot products as logits for a softmax.
+TODO: try this stuff
+stacked_ae = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    keras.layers.Dense(100, activation="selu"),
+    keras.layers.Dense(30, activation="selu"),
+    keras.layers.Dense(100, activation="selu"),
+    keras.layers.Dense(28 * 28, activation="sigmoid"),
+    keras.layers.Reshape([28, 28])
+])
+
+stacked_ae.compile(loss="binary_crossentropy",
+                   optimizer=keras.optimizers.SGD(lr=1.5))
+
+history = stacked_ae.fit(img_train, img_train, epochs=10,
+                         validation_data=(img_test, img_test))
 """
-class EmbeddingModel(keras.Model):
-    def train_step(self, data):
-        # Note: Workaround for open issue, to be removed.
-        if isinstance(data, tuple):
-            data = data[0]
-        anchors, positives = data[0], data[1]
-
-        with tf.GradientTape() as tape:
-            # Run both anchors and positives through model.
-            anchor_embeddings = self(anchors, training=True)
-            positive_embeddings = self(positives, training=True)
-
-            # Calculate cosine similarity between anchors and positives. As they have
-            # been normalised this is just the pair wise dot products.
-            similarities = tf.einsum(
-                "ae,pe->ap", anchor_embeddings, positive_embeddings
-            )
-
-            # Since we intend to use these as logits we scale them by a temperature.
-            # This value would normally be chosen as a hyper parameter.
-            temperature = 0.2
-            similarities /= temperature
-
-            # We use these similarities as logits for a softmax. The labels for
-            # this call are just the sequence [0, 1, 2, ..., num_classes] since we
-            # want the main diagonal values, which correspond to the anchor/positive
-            # pairs, to be high. This loss will move embeddings for the
-            # anchor/positive pairs together and move all other pairs apart.
-            sparse_labels = tf.range(num_classes)
-            loss = self.compiled_loss(sparse_labels, similarities)
-
-        # Calculate gradients and apply via optimizer.
-        gradients = tape.gradient(loss, self.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-
-        # Update and return metrics (specifically the one for the loss value).
-        self.compiled_metrics.update_state(sparse_labels, similarities)
-        return {m.name: m.result() for m in self.metrics}
+def build_autoencoder(img_shape, code_size):
+    # The encoder
+    encoder = Sequential()
+    encoder.add(InputLayer(img_shape))
+    encoder.add(Flatten())
+    encoder.add(Dense(code_size))
+    # The decoder
+    decoder = Sequential()
+    decoder.add(InputLayer((code_size,)))
+    decoder.add(Dense(np.prod(img_shape)))
+    decoder.add(Reshape(img_shape))
+    return encoder, decoder
 
 
-"""
-Next we describe the architecture that maps from an image to an embedding. This model
-simply consists of a sequence of 2d convolutions followed by global pooling with a final
-linear projection to an embedding space. As is common in metric learning we normalise the
-embeddings so that we can use simple dot products to measure similarity. For simplicity
-this model is intentionally small.
-"""
+def predict(img, encoder, decoder):
+    code = encoder.predict(img[None])[0]
+    return decoder.predict(code[None])[0]
 
-inputs = layers.Input(shape=(height_width, height_width, 3))
-x = layers.Conv2D(filters=32, kernel_size=3, strides=2, activation="relu")(inputs)
-x = layers.Conv2D(filters=64, kernel_size=3, strides=2, activation="relu")(x)
-x = layers.Conv2D(filters=128, kernel_size=3, strides=2, activation="relu")(x)
-x = layers.GlobalAveragePooling2D()(x)
-embeddings = layers.Dense(units=8, activation=None)(x)
-embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
-
-model = EmbeddingModel(inputs, embeddings)
+def write(file_name, img):
+    cv2.imwrite(file_name, img)
 
 
-"""
-main
-"""
 if __name__ == "__main__":
-    """
-    Finally we run the training. On a Google Colab GPU instance this takes about a minute.
-    """
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=1e-3),
-        loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-    )
-    model.fit(AnchorPositivePairs(num_batchs=1000), epochs=20)
-    model.save("../tmp/model")
+    # read photos
+    X = load_lfw_dataset(use_raw=True, dimx=32, dimy=32)
+    # normalize
+    X = X.astype('float32') / 255.0 - 0.5
+    # split train,test
+    X_train, X_test = train_test_split(X, test_size=0.1, random_state=42)
+    # get dimensions
+    IMG_SHAPE = X.shape[1:]
+    # build auto encoder
+    encoder, decoder = build_autoencoder(IMG_SHAPE, 32)
+    inp = Input(IMG_SHAPE)
+    code = encoder(inp)
+    reconstruction = decoder(code)
+    autoencoder = Model(inp, reconstruction)
+    autoencoder.compile(optimizer='adamax', loss='mse')
+    print(autoencoder.summary())
+    # fit
+    autoencoder.fit(x=X_train, y=X_train, epochs=3, validation_data=(X_test, X_test))
+    # predict
+    predicted = predict(X_test[0], encoder, decoder)
+    # write
+    write("data/out/first.jpg", predicted)
