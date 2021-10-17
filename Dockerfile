@@ -16,4 +16,7 @@ RUN pip install tensorflow==${TF_VERSION}
 COPY data ./data
 COPY src ./src
 
+# run
+RUN python src/main/python/train.py
+
 ENTRYPOINT ~/../bin/bash
