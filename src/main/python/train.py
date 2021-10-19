@@ -1,4 +1,5 @@
 import tarfile
+import random
 
 import cv2
 from tensorflow.keras.layers import Dense, Flatten, Reshape, Input, InputLayer
@@ -25,25 +26,19 @@ def load_lfw_dataset(
         dimx=45, dimy=45):
     # Read photos
     all_photos = []
-
-    # tqdm in used to show progress bar while reading the data in a notebook here, you can change
-    # tqdm_notebook to use it outside a notebook
     with tarfile.open(RAW_IMAGES_NAME if use_raw else IMAGES_NAME) as f:
         for m in f.getmembers():
             # Only process image files from the compressed data
             if m.isfile() and m.name.endswith(".jpg"):
-                print(m.name)
                 # Prepare image
                 img = decode_image_from_raw_bytes(f.extractfile(m).read())
-
                 # Crop only faces and resize it
                 img = img[dy:-dy, dx:-dx]
                 img = cv2.resize(img, (dimx, dimy))
-
+                # append
                 all_photos.append(img)
-
+    # encode as stack uint8
     all_photos = np.stack(all_photos).astype('uint8')
-
     return all_photos
 
 
@@ -64,6 +59,8 @@ stacked_ae.compile(loss="binary_crossentropy",
 history = stacked_ae.fit(img_train, img_train, epochs=10,
                          validation_data=(img_test, img_test))
 """
+
+
 def build_autoencoder(img_shape, code_size):
     # The encoder
     encoder = Sequential()
@@ -81,6 +78,7 @@ def build_autoencoder(img_shape, code_size):
 def predict(img, encoder, decoder):
     code = encoder.predict(img[None])[0]
     return decoder.predict(code[None])[0]
+
 
 def write(file_name, img):
     cv2.imwrite(file_name, img)
