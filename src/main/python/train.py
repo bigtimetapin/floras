@@ -30,6 +30,7 @@ def load_lfw_dataset(
         for m in f.getmembers():
             # Only process image files from the compressed data
             if m.isfile() and m.name.endswith(".jpg"):
+                print(m.name)
                 # Prepare image
                 img = decode_image_from_raw_bytes(f.extractfile(m).read())
                 # Crop only faces and resize it
@@ -81,6 +82,7 @@ def predict(img, encoder, decoder):
 
 
 def write(file_name, img):
+    img = (img + 0.5) * 255.0
     cv2.imwrite(file_name, img)
 
 
@@ -104,6 +106,6 @@ if __name__ == "__main__":
     # fit
     autoencoder.fit(x=X_train, y=X_train, epochs=3, validation_data=(X_test, X_test))
     # predict
-    predicted = predict(X_test[0], encoder, decoder)
+    predicted = predict(X_test[1], encoder, decoder)
     # write
     write("data/out/first.jpg", predicted)
