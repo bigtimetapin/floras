@@ -1,4 +1,4 @@
-package mov2png
+package discretizer
 
 import org.bytedeco.javacv.{FFmpegFrameGrabber, Frame, Java2DFrameConverter}
 
@@ -6,7 +6,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
-object MOV2PNG extends App {
+object Discretizer extends App {
 
   private val frame2ImageConverter: Java2DFrameConverter = {
     new Java2DFrameConverter

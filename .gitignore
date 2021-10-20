@@ -1,7 +1,9 @@
 # data
 data
-
+# fotos
 .DS_Store
+#python
+*.iml
 
 # Idea
 .idea

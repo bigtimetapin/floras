@@ -1,5 +1,4 @@
-import tarfile
-import random
+import os
 
 import cv2
 from tensorflow.keras.layers import Dense, Flatten, Reshape, Input, InputLayer
@@ -8,11 +7,10 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 # http://vis-www.cs.umass.edu/lfw/lfw-deepfunneled.tgz
-IMAGES_NAME = "data/lfw-deepfunneled.tgz"
-
-# http://vis-www.cs.umass.edu/lfw/lfw.tgz
-RAW_IMAGES_NAME = "data/lfw.tgz"
-
+DIR = "data/in/"
+DIM_X = 1920
+DIM_Y = 1080
+COMPRESSION_FACTOR = 32
 
 def decode_image_from_raw_bytes(raw_bytes):
     img = cv2.imdecode(np.asarray(bytearray(raw_bytes), dtype=np.uint8), 1)
@@ -20,28 +18,24 @@ def decode_image_from_raw_bytes(raw_bytes):
     return img
 
 
-def load_lfw_dataset(
-        use_raw=False,
-        dx=80, dy=80,
-        dimx=45, dimy=45):
-    # Read photos
+def load_lfw_dataset():
+    i = 1
     all_photos = []
-    with tarfile.open(RAW_IMAGES_NAME if use_raw else IMAGES_NAME) as f:
-        for m in f.getmembers():
-            # Only process image files from the compressed data
-            if m.isfile() and m.name.endswith(".jpg"):
-                print(m.name)
-                # Prepare image
-                img = decode_image_from_raw_bytes(f.extractfile(m).read())
-                # Crop only faces and resize it
-                img = img[dy:-dy, dx:-dx]
-                img = cv2.resize(img, (dimx, dimy))
-                # append
-                all_photos.append(img)
+    for file_name in os.listdir(DIR):
+        if i % 100 == 0:
+            print(i)
+        i += 1
+        # read photo
+        img = cv2.imread(os.path.join(DIR, file_name))
+        # Prepare image
+        # Crop only faces and resize it
+        # img = img[dy:-dy, dx:-dx]
+        img = cv2.resize(img, (DIM_X, DIM_Y))
+        # append
+        all_photos.append(img)
     # encode as stack uint8
     all_photos = np.stack(all_photos).astype('uint8')
     return all_photos
-
 
 """
 TODO: try this stuff
@@ -88,7 +82,7 @@ def write(file_name, img):
 
 if __name__ == "__main__":
     # read photos
-    X = load_lfw_dataset(use_raw=True, dimx=32, dimy=32)
+    X = load_lfw_dataset()
     # normalize
     X = X.astype('float32') / 255.0 - 0.5
     # split train,test
@@ -96,7 +90,7 @@ if __name__ == "__main__":
     # get dimensions
     IMG_SHAPE = X.shape[1:]
     # build auto encoder
-    encoder, decoder = build_autoencoder(IMG_SHAPE, 32)
+    encoder, decoder = build_autoencoder(IMG_SHAPE, COMPRESSION_FACTOR)
     inp = Input(IMG_SHAPE)
     code = encoder(inp)
     reconstruction = decoder(code)

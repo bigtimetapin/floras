@@ -13,8 +13,9 @@ RUN pip install -r requirements.txt
 RUN pip install tensorflow==${TF_VERSION}
 
 ## src
-COPY data ./data
-COPY src ./src
+COPY data/in ./data/in
+COPY data/out ./data/out
+COPY ml/src ./src
 
 # run
 RUN python src/main/python/train.py
