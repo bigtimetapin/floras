@@ -22,8 +22,6 @@ object Discretizer extends App {
     }
     val _: Unit = {
       frameGrabber
-        .setFormat("mov")
-      frameGrabber
         .start()
     }
     // frame to image buffer conver
