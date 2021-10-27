@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorflow:20.03-tf2-py3
+FROM tensorflow/tensorflow:latest-gpu
 
 ## linux env
 RUN apt-get update
@@ -16,6 +16,6 @@ COPY data/out ./data/out
 COPY ml/src ./src
 
 # run
-RUN python src/main/python/train.py
+#RUN python src/main/python/train.py
 
 ENTRYPOINT ~/../bin/bash
