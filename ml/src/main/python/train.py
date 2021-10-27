@@ -82,24 +82,37 @@ def write(file_name, img):
 
 if __name__ == "__main__":
     # read photos
+    print("reading data . . ")
     X = load_lfw_dataset()
     # normalize
+    print("normalizing data . . ")
     X = X.astype('float32') / 255.0 - 0.5
     # split train,test
+    print("split train, test")
     X_train, X_test = train_test_split(X, test_size=0.1, random_state=42)
     # get dimensions
+    print("get dimensions")
     IMG_SHAPE = X.shape[1:]
     # build auto encoder
+    print("build auto encoder")
     encoder, decoder = build_autoencoder(IMG_SHAPE, COMPRESSION_FACTOR)
+    print("inp")
     inp = Input(IMG_SHAPE)
+    print("code")
     code = encoder(inp)
+    print("reconstruction")
     reconstruction = decoder(code)
+    print("autoencoder")
     autoencoder = Model(inp, reconstruction)
+    print("compile")
     autoencoder.compile(optimizer='adamax', loss='mse')
     print(autoencoder.summary())
     # fit
+    print("fit")
     autoencoder.fit(x=X_train, y=X_train, epochs=3, validation_data=(X_test, X_test))
     # predict
+    print("predict")
     predicted = predict(X_test[1], encoder, decoder)
     # write
+    print("write")
     write("data/out/first.jpg", predicted)
