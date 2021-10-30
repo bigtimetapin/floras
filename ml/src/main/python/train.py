@@ -1,6 +1,7 @@
 import os
 
 import cv2
+import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Reshape, Input, InputLayer
 from tensorflow.keras.models import Sequential, Model
 import numpy as np
@@ -8,36 +9,43 @@ from sklearn.model_selection import train_test_split
 
 # http://vis-www.cs.umass.edu/lfw/lfw-deepfunneled.tgz
 DIR = "data/in/"
-RESIZE_FACTOR = 4
+RESIZE_FACTOR = 4  # 4
 DIM_X = int(1920 / RESIZE_FACTOR)
 DIM_Y = int(1080 / RESIZE_FACTOR)
-COMPRESSION_FACTOR = int(32 * 5)
-
-def decode_image_from_raw_bytes(raw_bytes):
-    img = cv2.imdecode(np.asarray(bytearray(raw_bytes), dtype=np.uint8), 1)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    return img
+COMPRESSION_FACTOR = int(32 * 5)  # * 5)
 
 
 def load_lfw_dataset(_dir):
     i = 1
-    all_photos = []
+    init = []
     for file_name in os.listdir(_dir):
         if i % 100 == 0:
             print(i)
         i += 1
-        # read photo
-        img = cv2.imread(os.path.join(_dir, file_name))
-        # Prepare image
-        # Crop only faces and resize it
-        # img = img[dy:-dy, dx:-dx]
-        img = cv2.resize(img, (DIM_X, DIM_Y))
+        # read
+        # img = cv2.imread(os.path.join(_dir, file_name))
+        # resize
+        # img = cv2.resize(img, (DIM_X, DIM_Y))
         # append
-        all_photos.append(img)
+        # init.append(img)
+        image = tf.io.read_file(os.path.join(_dir, file_name))
+        image = tf.image.decode_jpeg(image)
+        image = tf.image.convert_image_dtype(image, tf.float32)
+        image = tf.image.resize(image, [DIM_X, DIM_Y])
+        init.append(image)
     # encode as stack uint8
-    all_photos = np.stack(all_photos).astype('uint8')
-    all_photos = all_photos.astype('float32') / 255.0 - 0.5
-    return all_photos
+    # init = np.stack(init).astype('uint8')
+    # init = init.astype('float32') / 255.0 - 0.5
+    return init
+
+def to_dataset(array):
+    # encode as dataset
+    dataset = tf.data.Dataset.from_tensor_slices(array)
+    # tup
+    dataset = dataset.map(lambda x: (x, x))
+    # batch
+    dataset = dataset.batch(batch_size=16, drop_remainder=True)
+    return dataset
 
 """
 TODO: try this stuff
@@ -45,7 +53,7 @@ stacked_ae = keras.models.Sequential([
     keras.layers.Flatten(input_shape=[28, 28]),
     keras.layers.Dense(100, activation="selu"),
     keras.layers.Dense(30, activation="selu"),
-    keras.layers.Dense(100, activation="selu"),
+    keras.layers.Dense(100, activaon="selu"),
     keras.layers.Dense(28 * 28, activation="sigmoid"),
     keras.layers.Reshape([28, 28])
 ])
@@ -61,12 +69,12 @@ history = stacked_ae.fit(img_train, img_train, epochs=10,
 def build_autoencoder(img_shape, code_size):
     # The encoder
     encoder = Sequential()
-    encoder.add(InputLayer(img_shape))
+    encoder.add(InputLayer(input_shape=img_shape))
     encoder.add(Flatten())
     encoder.add(Dense(code_size))
     # The decoder
     decoder = Sequential()
-    decoder.add(InputLayer((code_size,)))
+    decoder.add(InputLayer(input_shape=(code_size,)))
     decoder.add(Dense(np.prod(img_shape)))
     decoder.add(Reshape(img_shape))
     return encoder, decoder
@@ -78,22 +86,25 @@ def predict(img, encoder, decoder):
 
 
 def write(file_name, img):
-    img = (img + 0.5) * 255.0
-    cv2.imwrite(file_name, img)
+    # img = (img + 0.5) * 255.0
+    # cv2.imwrite(file_name, img)
+    tf.io.write_file(file_name, img)
 
 
 if __name__ == "__main__":
+    tf.autograph.set_verbosity(10)
     # read photos
     print("reading data . . ")
-    X = load_lfw_dataset(DIR)
-    # normalize
-    print("normalizing data . . ")
+    data = load_lfw_dataset(DIR)
     # split train,test
     print("split train, test")
-    X_train, X_test = train_test_split(X, test_size=0.1, random_state=42)
+    train, test = train_test_split(data, test_size=0.1, random_state=42)
+    print("to dataset")
+    X_train = to_dataset(train)
+    X_test = to_dataset(test)
     # get dimensions
     print("get dimensions")
-    IMG_SHAPE = X.shape[1:]
+    IMG_SHAPE = data.shape[1:]
     # build auto encoder
     print("build auto encoder")
     encoder, decoder = build_autoencoder(IMG_SHAPE, COMPRESSION_FACTOR)
@@ -110,7 +121,7 @@ if __name__ == "__main__":
     print(autoencoder.summary())
     # fit
     print("fit")
-    autoencoder.fit(x=X_train, y=X_train, epochs=15, validation_data=(X_test, X_test))
+    autoencoder.fit(X_train, validation_data=X_test, epochs=15, verbose=2)
     # predict
     print("predict")
     test = load_lfw_dataset("data/test/")
