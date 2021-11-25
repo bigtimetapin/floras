@@ -3,9 +3,6 @@ import os
 import tensorflow as tf
 
 DIR = "data/in/"
-RESIZE_FACTOR = 1  # 4
-DIM_X = int(1920 / RESIZE_FACTOR)
-DIM_Y = int(1080 / RESIZE_FACTOR)
 
 
 def _bytes_feature(value):
@@ -24,6 +21,7 @@ def _int64_feature(value):
     """Returns an int64_list from a bool / enum / int / uint."""
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
+
 def encode():
     record_file = 'data/images.tfrecords'
     with tf.io.TFRecordWriter(record_file) as writer:
@@ -38,6 +36,7 @@ def encode():
             msg = _encode(img_str)
             # write
             writer.write(msg.SerializeToString())
+
 
 def _encode(img_str):
     feature = {
