@@ -2,13 +2,11 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Reshape, Input, InputLayer
 from tensorflow.keras.models import Sequential, Model
 import numpy as np
-from preprocess import _decode
+from preprocess import _decode, DIM_X, DIM_Y
 
 DIR = "data/in/"
-RESIZE_FACTOR = 4  # 4
-DIM_X = int(1920 / RESIZE_FACTOR)
-DIM_Y = int(1080 / RESIZE_FACTOR)
 COMPRESSION_FACTOR = int(32 * 5)  # * 5)
+IMG_SHAPE = (DIM_X, DIM_Y, 3)
 VALIDATION_SIZE = 300
 
 image_feature_description = {
@@ -18,7 +16,7 @@ image_feature_description = {
 
 def decode(proto):
     def __decode(__img_str):
-        return _decode(__img_str, DIM_X, DIM_Y)
+        return _decode(__img_str)
     img = tf.py_function(
         __decode,
         [proto['img_str']],
@@ -57,17 +55,17 @@ history = stacked_ae.fit(img_train, img_train, epochs=10,
 """
 
 
-def build_autoencoder(img_shape, code_size):
+def build_autoencoder(code_size):
     # The encoder
     encoder = Sequential()
-    encoder.add(InputLayer(input_shape=img_shape))
+    encoder.add(InputLayer(input_shape=IMG_SHAPE))
     encoder.add(Flatten())
     encoder.add(Dense(code_size))
     # The decoder
     decoder = Sequential()
     decoder.add(InputLayer(input_shape=(code_size,)))
-    decoder.add(Dense(np.prod(img_shape)))
-    decoder.add(Reshape(img_shape))
+    decoder.add(Dense(np.prod(IMG_SHAPE)))
+    decoder.add(Reshape(IMG_SHAPE))
     return encoder, decoder
 
 
@@ -84,9 +82,9 @@ if __name__ == "__main__":
     print("to dataset")
     # build auto encoder
     print("build auto encoder")
-    encoder, decoder = build_autoencoder((DIM_X, DIM_Y, 3), COMPRESSION_FACTOR)
+    encoder, decoder = build_autoencoder(COMPRESSION_FACTOR)
     print("inp")
-    inp = Input((DIM_X, DIM_Y, 3))
+    inp = Input(IMG_SHAPE)
     print("code")
     code = encoder(inp)
     print("reconstruction")
@@ -98,7 +96,7 @@ if __name__ == "__main__":
     print(autoencoder.summary())
     # fit
     print("fit")
-    autoencoder.fit(x=X_train, validation_data=X_validation, epochs=15, verbose=2)
+    autoencoder.fit(x=X_train, validation_data=X_validation, epochs=3, verbose=2)
     # save
     print("write")
     encoder.save("data/model/encoder")

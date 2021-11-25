@@ -6,8 +6,6 @@ from preprocess import _decode
 
 DIR = "data/test/"
 FILE = "test.jpeg"
-DIM_X = 1920
-DIM_Y = 1080
 
 
 def predict(_img, _encoder, _decoder):
@@ -15,10 +13,11 @@ def predict(_img, _encoder, _decoder):
     return _decoder.predict(code[None])[0]
 
 
-def write(file_name, img):
-    # img = (img + 0.5) * 255.0
-    # cv2.imwrite(file_name, img)
-    tf.io.write_file(file_name, img)
+def write(file_name, _img):
+    _img = tf.image.convert_image_dtype(_img, tf.uint8)
+    # _img = tf.image.resize(_img, [DIM_X, DIM_Y])
+    _img_str = tf.image.encode_jpeg(_img)
+    tf.io.write_file(file_name, _img_str)
 
 
 if __name__ == "__main__":
@@ -27,7 +26,8 @@ if __name__ == "__main__":
     decoder = keras.models.load_model("data/model/decoder")
     # read test data
     img_str = tf.io.read_file(os.path.join(DIR, FILE))
-    img = _decode(img_str, DIM_X, DIM_Y)
+    img = _decode(img_str)
     # predict
+    print(img)
     predicted = predict(img, encoder, decoder)
-    write("data/out", predicted)
+    write("data/out/out.jpeg", predicted)
