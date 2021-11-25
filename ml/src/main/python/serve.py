@@ -5,7 +5,6 @@ import tensorflow as tf
 from preprocess import _decode
 
 DIR = "data/test/"
-FILE = "test.jpeg"
 
 
 def predict(_img, _encoder, _decoder):
@@ -25,9 +24,10 @@ if __name__ == "__main__":
     encoder = keras.models.load_model("data/model/encoder")
     decoder = keras.models.load_model("data/model/decoder")
     # read test data
-    img_str = tf.io.read_file(os.path.join(DIR, FILE))
-    img = _decode(img_str)
-    # predict
-    print(img)
-    predicted = predict(img, encoder, decoder)
-    write("data/out/out.jpeg", predicted)
+    for file in os.listdir(DIR):
+        img_str = tf.io.read_file(os.path.join(DIR, file))
+        img = _decode(img_str)
+        # predict
+        print(img)
+        predicted = predict(img, encoder, decoder)
+        write("data/out/{0}".format(file), predicted)
