@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-RESIZE_FACTOR = 4  # 4
+RESIZE_FACTOR = 3  # 4
 DIM_X = int(1920 / RESIZE_FACTOR)
 DIM_Y = int(1080 / RESIZE_FACTOR)
 

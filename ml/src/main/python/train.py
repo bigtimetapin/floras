@@ -4,9 +4,8 @@ from tensorflow.keras.models import Sequential, Model
 import numpy as np
 from preprocess import _decode, DIM_X, DIM_Y
 
-_DIR = "02"
-DIR = "data/in/{0}".format(_DIR)
-COMPRESSION_FACTOR = int(32 * 5)  # * 5)
+DIR = "data/in"
+COMPRESSION_FACTOR = int(32 * 5)
 IMG_SHAPE = tf.TensorShape((DIM_X, DIM_Y, 3))
 VALIDATION_SIZE = 300
 
@@ -24,6 +23,7 @@ def decode(proto):
     )
     return img
 
+
 def _dataset():
     # encode as dataset
     __dataset = tf.data.TFRecordDataset('{0}/images.tfrecords'.format(DIR))
@@ -32,24 +32,6 @@ def _dataset():
     # decode
     __dataset = __dataset.map(lambda x: (decode(x['img_str_x']), decode(x['img_str_y'])))
     return __dataset
-
-"""
-TODO: try this stuff
-stacked_ae = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
-    keras.layers.Dense(100, activation="selu"),
-    keras.layers.Dense(30, activation="selu"),
-    keras.layers.Dense(100, activaon="selu"),
-    keras.layers.Dense(28 * 28, activation="sigmoid"),
-    keras.layers.Reshape([28, 28])
-])
-
-stacked_ae.compile(loss="binary_crossentropy",
-                   optimizer=keras.optimizers.SGD(lr=1.5))
-
-history = stacked_ae.fit(img_train, img_train, epochs=10,
-                         validation_data=(img_test, img_test))
-"""
 
 
 def build_autoencoder(code_size):
@@ -94,8 +76,8 @@ if __name__ == "__main__":
     print(autoencoder.summary())
     # fit
     print("fit")
-    autoencoder.fit(x=X_train, validation_data=X_validation, epochs=3, verbose=2)
+    autoencoder.fit(x=X_train, validation_data=X_validation, epochs=1, verbose=2)
     # save
     print("write")
-    encoder.save("data/{0}/model/encoder".format(_DIR))
-    decoder.save("data/{0}/model/decoder".format(_DIR))
+    encoder.save("data/model/encoder")
+    decoder.save("data/model/decoder")

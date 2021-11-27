@@ -13,8 +13,8 @@ object Discretizer extends App {
   }
 
   private val _: Unit = {
-    //apply("01")
-    apply("02")
+    apply("01")
+    apply("03")
   }
 
   private def apply(dir: String): Unit = {
