@@ -15,7 +15,6 @@ object Discretizer extends App {
   private val _: Unit = {
     //apply("01")
     apply("02")
-    apply("03")
   }
 
   private def apply(dir: String): Unit = {
@@ -39,7 +38,7 @@ object Discretizer extends App {
       ImageIO.write(
         image,
         "png",
-        new File(s"data/png/$dir/${System.currentTimeMillis()}.png")
+        new File(s"data/png/$dir/x/${System.currentTimeMillis()}.png")
       )
       // grab next frame
       frame = frameGrabber.grab()

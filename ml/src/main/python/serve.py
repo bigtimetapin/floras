@@ -2,7 +2,7 @@ import os
 
 import tensorflow.keras as keras
 import tensorflow as tf
-from preprocess import _decode
+from preprocess import _decode, DIM_X, DIM_Y
 
 DIR = "data/test/"
 
@@ -13,8 +13,8 @@ def predict(_img, _encoder, _decoder):
 
 
 def write(file_name, _img):
+    _img = tf.image.resize(_img, [DIM_X, DIM_Y])
     _img = tf.image.convert_image_dtype(_img, tf.uint8)
-    # _img = tf.image.resize(_img, [DIM_X, DIM_Y])
     _img_str = tf.image.encode_jpeg(_img)
     tf.io.write_file(file_name, _img_str)
 

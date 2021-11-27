@@ -10,4 +10,10 @@ def _decode(img_str):
     img = tf.image.decode_jpeg(img_str)
     img = tf.image.convert_image_dtype(img, tf.float32)
     img = tf.image.resize(img, [DIM_X, DIM_Y])
+    img = tf.reshape(img, [DIM_X, DIM_Y, 3])
     return img
+
+
+def _decode_list(_one, _two):
+    return [_decode(_one), _decode(_two)]
+

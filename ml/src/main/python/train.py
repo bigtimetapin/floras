@@ -4,36 +4,33 @@ from tensorflow.keras.models import Sequential, Model
 import numpy as np
 from preprocess import _decode, DIM_X, DIM_Y
 
-DIR = "data/in/"
+_DIR = "02"
+DIR = "data/in/{0}".format(_DIR)
 COMPRESSION_FACTOR = int(32 * 5)  # * 5)
-IMG_SHAPE = (DIM_X, DIM_Y, 3)
+IMG_SHAPE = tf.TensorShape((DIM_X, DIM_Y, 3))
 VALIDATION_SIZE = 300
 
 image_feature_description = {
-    'img_str': tf.io.FixedLenFeature([], tf.string),
+    'img_str_x': tf.io.FixedLenFeature([], tf.string),
+    'img_str_y': tf.io.FixedLenFeature([], tf.string)
 }
 
 
 def decode(proto):
-    def __decode(__img_str):
-        return _decode(__img_str)
     img = tf.py_function(
-        __decode,
-        [proto['img_str']],
+        _decode,
+        [proto],
         tf.float32
     )
     return img
 
-
 def _dataset():
     # encode as dataset
-    __dataset = tf.data.TFRecordDataset('data/images.tfrecords')
+    __dataset = tf.data.TFRecordDataset('{0}/images.tfrecords'.format(DIR))
     # parse
     __dataset = __dataset.map(lambda x: tf.io.parse_single_example(x, image_feature_description))
     # decode
-    __dataset = __dataset.map(lambda x: decode(x))
-    # tup
-    __dataset = __dataset.map(lambda x: (x, x))
+    __dataset = __dataset.map(lambda x: (decode(x['img_str_x']), decode(x['img_str_y'])))
     return __dataset
 
 """
@@ -60,7 +57,7 @@ def build_autoencoder(code_size):
     encoder = Sequential()
     encoder.add(InputLayer(input_shape=IMG_SHAPE))
     encoder.add(Flatten())
-    encoder.add(Dense(code_size))
+    encoder.add(Dense(code_size, ))
     # The decoder
     decoder = Sequential()
     decoder.add(InputLayer(input_shape=(code_size,)))
@@ -74,12 +71,13 @@ if __name__ == "__main__":
     # read photos
     print("reading data . . ")
     dataset = _dataset()
+    for row in dataset.take(1):
+        print(row[0])
     # split train,test
     print("split train, test")
     dataset = dataset.shuffle(buffer_size=1000, seed=19)
     X_validation = dataset.take(VALIDATION_SIZE)
     X_train = dataset.skip(VALIDATION_SIZE)
-    print("to dataset")
     # build auto encoder
     print("build auto encoder")
     encoder, decoder = build_autoencoder(COMPRESSION_FACTOR)
@@ -99,5 +97,5 @@ if __name__ == "__main__":
     autoencoder.fit(x=X_train, validation_data=X_validation, epochs=3, verbose=2)
     # save
     print("write")
-    encoder.save("data/model/encoder")
-    decoder.save("data/model/decoder")
+    encoder.save("data/{0}/model/encoder".format(_DIR))
+    decoder.save("data/{0}/model/decoder".format(_DIR))

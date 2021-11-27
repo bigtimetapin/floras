@@ -2,7 +2,9 @@ import os
 
 import tensorflow as tf
 
-DIR = "data/in/"
+DIR = "02"
+DIR_X = "data/png/{0}/x/".format(DIR)
+DIR_Y = "data/png/{0}/y/".format(DIR)
 
 
 def _bytes_feature(value):
@@ -23,24 +25,27 @@ def _int64_feature(value):
 
 
 def encode():
-    record_file = 'data/images.tfrecords'
+    record_file = 'data/in/{0}/images.tfrecords'.format(DIR)
     with tf.io.TFRecordWriter(record_file) as writer:
         i = 1
-        for file_name in os.listdir(DIR):
-            if i % 100 == 0:
-                print(i)
-            i += 1
-            # read
-            img_str = tf.io.read_file(os.path.join(DIR, file_name))
-            # encode
-            msg = _encode(img_str)
-            # write
-            writer.write(msg.SerializeToString())
+        for file_name_x in os.listdir(DIR_X):
+            for file_name_y in os.listdir(DIR_Y):
+                if i % 100 == 0:
+                    print(i)
+                i += 1
+                # read
+                img_str_x = tf.io.read_file(os.path.join(DIR_X, file_name_x))
+                img_str_y = tf.io.read_file(os.path.join(DIR_Y, file_name_y))
+                # encode
+                msg = _encode(img_str_x, img_str_y)
+                # write
+                writer.write(msg.SerializeToString())
 
 
-def _encode(img_str):
+def _encode(_img_str_x, _img_str_y):
     feature = {
-        'img_str': _bytes_feature(img_str)
+        'img_str_x': _bytes_feature(_img_str_x),
+        'img_str_y': _bytes_feature(_img_str_y)
     }
     msg = tf.train.Example(
         features=tf.train.Features(feature=feature)
