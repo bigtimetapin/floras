@@ -76,7 +76,7 @@ if __name__ == "__main__":
     print(autoencoder.summary())
     # fit
     print("fit")
-    autoencoder.fit(x=X_train, validation_data=X_validation, epochs=1, verbose=2)
+    autoencoder.fit(x=X_train, validation_data=X_validation, epochs=3, verbose=2)
     # save
     print("write")
     encoder.save("data/model/encoder")
