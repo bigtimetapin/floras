@@ -2,7 +2,19 @@ import os
 
 import tensorflow as tf
 
-DIRS = ["05"]
+JUST_X = True
+
+DIRS = [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "10"
+]
 
 
 def dir_x(n):
@@ -35,18 +47,33 @@ def encode():
     with tf.io.TFRecordWriter(record_file) as writer:
         i = 1
         for n in DIRS:
-            _dir_x = dir_x(n)
-            _dir_y = dir_y(n)
-            for file_name_x in os.listdir(_dir_x):
-                for file_name_y in os.listdir(_dir_y):
+            if not JUST_X:
+                _dir_x = dir_x(n)
+                _dir_y = dir_y(n)
+                for file_name_x in os.listdir(_dir_x):
+                    for file_name_y in os.listdir(_dir_y):
+                        if i % 100 == 0:
+                            print(i)
+                            print("y")
+                        i += 1
+                        # read
+                        img_str_x = tf.io.read_file(os.path.join(_dir_x, file_name_x))
+                        img_str_y = tf.io.read_file(os.path.join(_dir_y, file_name_y))
+                        # encode
+                        msg = _encode(img_str_x, img_str_y)
+                        # write
+                        writer.write(msg.SerializeToString())
+
+            else:
+                _dir_x = dir_x(n)
+                for file_name_x in os.listdir(_dir_x):
                     if i % 100 == 0:
                         print(i)
                     i += 1
                     # read
                     img_str_x = tf.io.read_file(os.path.join(_dir_x, file_name_x))
-                    img_str_y = tf.io.read_file(os.path.join(_dir_y, file_name_y))
                     # encode
-                    msg = _encode(img_str_x, img_str_y)
+                    msg = _encode(img_str_x, img_str_x)
                     # write
                     writer.write(msg.SerializeToString())
 
