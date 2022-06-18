@@ -13,7 +13,17 @@ DIRS = [
     "06",
     "07",
     "08",
-    "10"
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20"
 ]
 
 
@@ -69,6 +79,7 @@ def encode():
                 for file_name_x in os.listdir(_dir_x):
                     if i % 100 == 0:
                         print(i)
+                        print(_dir_x)
                     i += 1
                     # read
                     img_str_x = tf.io.read_file(os.path.join(_dir_x, file_name_x))

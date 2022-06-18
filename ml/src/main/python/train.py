@@ -7,7 +7,7 @@ from preprocess import _decode, DIM_X, DIM_Y
 DIR = "data/in"
 COMPRESSION_FACTOR = int(32 * 5)
 IMG_SHAPE = tf.TensorShape((DIM_X, DIM_Y, 3))
-VALIDATION_SIZE = 300
+VALIDATION_SIZE = 1500
 
 image_feature_description = {
     'img_str_x': tf.io.FixedLenFeature([], tf.string),
