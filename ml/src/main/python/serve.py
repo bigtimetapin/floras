@@ -15,7 +15,7 @@ def predict(_img, _encoder, _decoder):
 def write(file_name, _img):
     _img = tf.image.resize(_img, [DIM_X, DIM_Y])
     _img = tf.image.convert_image_dtype(_img, tf.uint8)
-    _img_str = tf.image.encode_jpeg(_img)
+    _img_str = tf.image.encode_png(_img)
     tf.io.write_file(file_name, _img_str)
 
 
